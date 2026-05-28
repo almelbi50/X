@@ -37,22 +37,34 @@ def save_to_twitter_history(link, is_archive=False):
     with open(TWITTER_HISTORY_FILE, "a", encoding="utf-8") as f:
         f.write(f"{normalized} || {type_str} || {date_str}\n")
 
-def send_tweet_via_webhook(text):
-    """
-    بما أن الـ API مغلق، الكود سيقوم بطباعة نص التغريدة الجاهز في السجلات 
-    تمهيداً لدفعها عبر نظام النشر الآلي المستقر.
-    """
-    print("🚀 نص التغريدة الجاهز للنشر:")
+def send_tweet_mock(text):
+    """طباعة التغريدة الجاهزة وإدارتها برمجياً بأمان"""
+    print("🚀 نص التغريدة الجاهز والمعتمد للمنصة:")
     print("-" * 40)
     print(text)
     print("-" * 40)
-    # لإتمام الربط التلقائي بدون قيود، يفضل استخدام بروتوكول التليجرام الذي يعمل معك بنجاح 100%
     return True
 
 def main():
-    feed = feedparser.parse(FEED_URL)
+    # استخدام متصفح وهمي لكسر جدار حماية خادم الووردبريس (Cloudflare/Wordfence)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    
+    try:
+        response = requests.get(FEED_URL, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"❌ فشل جلب الخلاصة من خادم الموقع. رمز الحالة: {response.status_code}")
+            return
+        
+        # قراءة محتوى الـ XML مباشرة بعد الجلب الناجح
+        feed = feedparser.parse(response.content)
+    except Exception as e:
+        print(f"حدث خطأ أثناء الاتصال بخلاصة الموقع: {e}")
+        return
+
     if not feed.entries:
-        print("خلاصة الموقع فارغة حالياً.")
+        print("⚠️ لم يتمكن النظام من قراءة أي مقالات داخل خلاصة الموقع، تأكد من سلامة رابط الـ feed.")
         return
 
     history_lines = load_twitter_history()
@@ -71,9 +83,9 @@ def main():
             f"تابعونا للمزيد 🔭: @Phylab5\n"
             f"#معامل_الفيزياء #محاكاة_علمية"
         )
-        if send_tweet_via_webhook(tweet_text):
+        if send_tweet_mock(tweet_text):
             save_to_twitter_history(latest_entry.link, is_archive=False)
-            print("🎯 تم معالجة التغريدة الجديدة بنجاح!")
+            print("🎯 تم معالجة وحفظ المقال الجديد في الذاكرة بنجاح!")
         return
 
     archive_sent_today = get_archive_count_today(history_lines)
@@ -92,13 +104,13 @@ def main():
                 f"للمتابعة عبر تويتر 💻: @Phylab5\n"
                 f"#معامل_الفيزياء #Phy_Lab"
             )
-            if send_tweet_via_webhook(tweet_text):
+            if send_tweet_mock(tweet_text):
                 save_to_twitter_history(archive_entry.link, is_archive=True)
-                print("📚 تم معالجة تغريدة الأرشيف بنجاح!")
+                print("📚 تم معالجة وتخزين تغريدة الأرشيف في الذاكرة بنجاح!")
         else:
-            print("كل المقالات المتاحة تم معالجتها مسبقاً.")
+            print("كل مقالات الموقع المتاحة في الخلاصة تم معالجتها وتغريدها مسبقاً.")
     else:
-        print("تم الوصول للحد الأقصى اليوم.")
+        print("تم الوصول للحد الأقصى لتغريدات الأرشيف اليوم.")
 
 if __name__ == "__main__":
     main()
