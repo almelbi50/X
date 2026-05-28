@@ -1,12 +1,12 @@
 import os
-import requests
 import feedparser
+import re
 import html
 import random
 from datetime import datetime
-from requests_oauthlib import OAuth1
+import tweepy
 
-# استدعاء مفاتيح تويتر الأربعة الأصلية التي استخرجناها من لوحة المطورين في البداية
+# استدعاء مفاتيح تويتر الأربعة الأصلية والأساسية
 API_KEY = os.getenv("TWITTER_API_KEY")
 API_SECRET = os.getenv("TWITTER_API_SECRET")
 ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
@@ -44,30 +44,28 @@ def save_to_twitter_history(link, is_archive=False):
     with open(TWITTER_HISTORY_FILE, "a", encoding="utf-8") as f:
         f.write(f"{normalized} || {type_str} || {date_str}\n")
 
-def send_tweet_direct(text):
-    """إرسال التغريدة مباشرة عبر واجهة برمجية تتخطى قيود الأرصدة التلقائية"""
-    url = "https://api.twitter.com/2/tweets"
-    auth = OAuth1(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET)
-    
-    # نرسل البيانات كـ JSON مع تحديد الـ Content-Type ليتوافق مع الحساب المجاني
-    headers = {"Content-Type": "application/json"}
-    payload = {"text": text}
-    
+def send_tweet_tweepy(text):
+    """إرسال التغريدة بالدمج القياسي الصحيح لـ Tweepy والمفاتيح الأربعة لحساب Free"""
     try:
-        response = requests.post(url, auth=auth, json=payload, headers=headers)
-        if response.status_code == 201:
+        # تهيئة الكلاينت باستخدام المفاتيح الأربعة معاً لحل مشكلة الـ Unsupported Authentication
+        client = tweepy.Client(
+            consumer_key=API_KEY,
+            consumer_secret=API_SECRET,
+            access_token=ACCESS_TOKEN,
+            access_token_secret=ACCESS_SECRET
+        )
+        response = client.create_tweet(text=text)
+        if response.data and 'id' in response.data:
             return True
-        else:
-            print(f"❌ فشل النشر المباشر. رمز الحالة: {response.status_code}")
-            print(f"📋 رد السيرفر: {response.text}")
-            return False
+        return False
     except Exception as e:
-        print(f"حدث خطأ أثناء الاتصال المباشر بإكس: {e}")
+        print(f"❌ فشل النشر عبر تيربي المطور:")
+        print(f"📋 تفاصيل الخطأ: {e}")
         return False
 
 def main():
     if not API_KEY or not API_SECRET or not ACCESS_TOKEN or not ACCESS_SECRET:
-        print("❌ خطأ: مفاتيح تويتر الأربعة الأصلية غير متوفرة في إعدادات جيتهاب Secrets.")
+        print("❌ خطأ: تأكد من وجود مفاتيح تويتر الأربعة الأصلية في إعدادات جيتهاب Secrets.")
         return
 
     feed = feedparser.parse(FEED_URL)
@@ -92,8 +90,8 @@ def main():
             f"تابعونا للمزيد 🔭: @Phylab5\n"
             f"#معامل_الفيزياء #محاكاة_علمية"
         )
-        print(f"جاري إرسال مقال جديد مباشرة لـ تويتر: {clean_title}")
-        if send_tweet_direct(tweet_text):
+        print(f"جاري إرسال مقال جديد لـ تويتر: {clean_title}")
+        if send_tweet_tweepy(tweet_text):
             save_to_twitter_history(latest_entry.link, is_archive=False)
             print("🎯 تم التغريد بنجاح وحفظ الرابط للجديد!")
         return
@@ -115,8 +113,8 @@ def main():
                 f"للمتابعة عبر تويتر 💻: @Phylab5\n"
                 f"#معامل_الفيزياء #Phy_Lab"
             )
-            print(f"جاري إرسال مقال أرشيفي مباشرة لـ تويتر: {clean_title}")
-            if send_tweet_direct(tweet_text):
+            print(f"جاري إرسال مقال أرشيفي لـ تويتر: {clean_title}")
+            if send_tweet_tweepy(tweet_text):
                 save_to_twitter_history(archive_entry.link, is_archive=True)
                 print("📚 تم تغريد الأرشيف بنجاح!")
         else:
