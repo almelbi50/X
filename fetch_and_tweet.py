@@ -45,17 +45,17 @@ def save_to_twitter_history(link, is_archive=False):
         f.write(f"{normalized} || {type_str} || {date_str}\n")
 
 def send_tweet(text):
-    """إرسال التغريدة عبر الـ API الرسمي لإكس v2 مع طباعة تفاصيل الاستجابة"""
-    url = "https://api.twitter.com/2/tweets"
+    """إرسال التغريدة عبر الـ API v1.1 المستقر والمجاني"""
+    url = "https://api.twitter.com/1.1/statuses/update.json"
     auth = OAuth1(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET)
-    payload = {"text": text}
+    payload = {"status": text}
     
     try:
-        response = requests.post(url, auth=auth, json=payload)
-        if response.status_code == 201:
+        response = requests.post(url, auth=auth, data=payload)
+        if response.status_code == 200:
             return True
         else:
-            print(f"❌ فشل النشر في إكس. رمز الحالة: {response.status_code}")
+            print(f"❌ فشل النشر في إكس (v1.1). رمز الحالة: {response.status_code}")
             print(f"📋 رد السيرفر: {response.text}")
             return False
     except Exception as e:
@@ -71,7 +71,7 @@ def main():
     history_lines = load_twitter_history()
     published_urls = set(normalize_url(line.split(" || ")[0]) for line in history_lines if line)
     
-    # 1. مسار المقالات الجديدة
+    # 1. مسار المقالات الجديدة فورا
     latest_entry = feed.entries[0]
     normalized_latest_link = normalize_url(latest_entry.link)
     
@@ -80,17 +80,18 @@ def main():
         tweet_text = (
             f"🎯 مقال علمي جديد في منصة معامل الفيزياء!\n\n"
             f"📝 【 {clean_title} 】\n\n"
-            f"تفضلوا بالمعاينة والتجربة الرقمية عبر رابط المنصة:\n"
+            f"تفضلوا بالمعاينة والتجربة الرقمية عبر رابط المنصة المباشر:\n"
             f"{latest_entry.link}\n\n"
+            f"تابعونا للمزيد 🔭: @Phylab5\n"
             f"#معامل_الفيزياء #محاكاة_علمية"
         )
         print(f"جاري تغريد مقال جديد: {clean_title}")
         if send_tweet(tweet_text):
             save_to_twitter_history(latest_entry.link, is_archive=False)
-            print("🎯 تم التغريد بنجاح وحفظ الرابط.")
+            print("🎯 تم التغريد بنجاح وحفظ الرابط للجديد.")
         return
 
-    # 2. مسار الأرشيف
+    # 2. مسار الأرشيف (بشرط مقالين فقط يومياً كحد أقصى)
     archive_sent_today = get_archive_count_today(history_lines)
     print(f"تغريدات الأرشيف المرسلة اليوم: {archive_sent_today}/2")
     
@@ -102,8 +103,9 @@ def main():
             tweet_text = (
                 f"📚 من أرشيف معامل الفيزياء المتميزة\n\n"
                 f"📝 【 {clean_title} 】\n\n"
-                f"اكتشف المحاكاة والأدوات البرمجية الذكية المتوفرة:\n"
+                f"اكتشف المختبرات الافتراضية والأدوات البرمجية المتوفرة:\n"
                 f"{archive_entry.link}\n\n"
+                f"للمتابعة عبر تويتر 💻: @Phylab5\n"
                 f"#معامل_الفيزياء #Phy_Lab"
             )
             print(f"جاري تغريد مقال من الأرشيف: {clean_title}")
@@ -111,7 +113,7 @@ def main():
                 save_to_twitter_history(archive_entry.link, is_archive=True)
                 print("📚 تم تغريد الأرشيف بنجاح وحفظ الرابط.")
         else:
-            print("كل المقالات بالخلاصة تم تغريدها مسبقاً.")
+            print("كل المقالات المتاحة بالخلاصة تم تغريدها مسبقاً.")
     else:
         print("تم الوصول للحد الأقصى لتغريدات الأرشيف اليوم.")
 
