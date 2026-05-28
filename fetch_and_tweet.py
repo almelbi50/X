@@ -1,16 +1,14 @@
 import os
+import requests
 import feedparser
 import re
 import html
 import random
 from datetime import datetime
-import tweepy
 
-# استدعاء مفاتيح تويتر الأربعة الأصلية والأساسية
-API_KEY = os.getenv("TWITTER_API_KEY")
-API_SECRET = os.getenv("TWITTER_API_SECRET")
-ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
-ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
+# استدعاء المفاتيح الأمنية من جيتهاب
+BUFFER_TOKEN = os.getenv("BUFFER_ACCESS_TOKEN")
+PROFILE_ID = os.getenv("BUFFER_PROFILE_ID")
 
 FEED_URL = "https://phy-lab.com/feed"
 TWITTER_HISTORY_FILE = "published_tweets.txt"
@@ -44,28 +42,33 @@ def save_to_twitter_history(link, is_archive=False):
     with open(TWITTER_HISTORY_FILE, "a", encoding="utf-8") as f:
         f.write(f"{normalized} || {type_str} || {date_str}\n")
 
-def send_tweet_tweepy(text):
-    """إرسال التغريدة بالدمج القياسي الصحيح لـ Tweepy والمفاتيح الأربعة لحساب Free"""
+def send_tweet_via_buffer(text):
+    """إرسال التغريدة وتمرير التوكن بالتوافق مع الـ OIDC Tokens لـ Buffer"""
+    # نمرر التوكن مباشرة في رابط الطلب لتخطي حظر الـ OIDC في الـ Headers
+    url = f"https://api.bufferapp.com/1/updates/create.json?access_token={BUFFER_TOKEN}"
+    
+    payload = {
+        "profile_ids[]": [PROFILE_ID],
+        "text": text,
+        "shorten": False,
+        "now": True  # النشر الفوري والمباشر
+    }
+    
     try:
-        # تهيئة الكلاينت باستخدام المفاتيح الأربعة معاً لحل مشكلة الـ Unsupported Authentication
-        client = tweepy.Client(
-            consumer_key=API_KEY,
-            consumer_secret=API_SECRET,
-            access_token=ACCESS_TOKEN,
-            access_token_secret=ACCESS_SECRET
-        )
-        response = client.create_tweet(text=text)
-        if response.data and 'id' in response.data:
+        response = requests.post(url, data=payload)
+        if response.status_code == 200:
             return True
-        return False
+        else:
+            print(f"❌ فشل النشر عبر Buffer. رمز الحالة: {response.status_code}")
+            print(f"📋 رد السيرفر: {response.text}")
+            return False
     except Exception as e:
-        print(f"❌ فشل النشر عبر تيربي المطور:")
-        print(f"📋 تفاصيل الخطأ: {e}")
+        print(f"حدث خطأ أثناء الاتصال بـ Buffer: {e}")
         return False
 
 def main():
-    if not API_KEY or not API_SECRET or not ACCESS_TOKEN or not ACCESS_SECRET:
-        print("❌ خطأ: تأكد من وجود مفاتيح تويتر الأربعة الأصلية في إعدادات جيتهاب Secrets.")
+    if not BUFFER_TOKEN or not PROFILE_ID:
+        print("❌ خطأ: مفاتيح Buffer_Access_Token أو Profile_ID غير متوفرة في جيتهاب.")
         return
 
     feed = feedparser.parse(FEED_URL)
@@ -90,10 +93,10 @@ def main():
             f"تابعونا للمزيد 🔭: @Phylab5\n"
             f"#معامل_الفيزياء #محاكاة_علمية"
         )
-        print(f"جاري إرسال مقال جديد لـ تويتر: {clean_title}")
-        if send_tweet_tweepy(tweet_text):
+        print(f"جاري إرسال مقال جديد لـ تويتر عبر Buffer: {clean_title}")
+        if send_tweet_via_buffer(tweet_text):
             save_to_twitter_history(latest_entry.link, is_archive=False)
-            print("🎯 تم التغريد بنجاح وحفظ الرابط للجديد!")
+            print("🎯 تم التغريد وحفظ الرابط للجديد بنجاح!")
         return
 
     # 2. مسار الأرشيف
@@ -113,8 +116,8 @@ def main():
                 f"للمتابعة عبر تويتر 💻: @Phylab5\n"
                 f"#معامل_الفيزياء #Phy_Lab"
             )
-            print(f"جاري إرسال مقال أرشيفي لـ تويتر: {clean_title}")
-            if send_tweet_tweepy(tweet_text):
+            print(f"جاري إرسال مقال أرشيفي لـ تويتر عبر Buffer: {clean_title}")
+            if send_tweet_via_buffer(tweet_text):
                 save_to_twitter_history(archive_entry.link, is_archive=True)
                 print("📚 تم تغريد الأرشيف بنجاح!")
         else:
