@@ -7,7 +7,6 @@ import random
 from datetime import datetime
 from requests_oauthlib import OAuth1
 
-# استدعاء مفاتيح تويتر الأمنية
 API_KEY = os.getenv("TWITTER_API_KEY")
 API_SECRET = os.getenv("TWITTER_API_SECRET")
 ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
@@ -46,14 +45,19 @@ def save_to_twitter_history(link, is_archive=False):
         f.write(f"{normalized} || {type_str} || {date_str}\n")
 
 def send_tweet(text):
-    """إرسال التغريدة عبر الـ API الرسمي لإكس v2"""
+    """إرسال التغريدة عبر الـ API الرسمي لإكس v2 مع طباعة تفاصيل الاستجابة"""
     url = "https://api.twitter.com/2/tweets"
     auth = OAuth1(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET)
     payload = {"text": text}
     
     try:
         response = requests.post(url, auth=auth, json=payload)
-        return response.status_code == 201
+        if response.status_code == 201:
+            return True
+        else:
+            print(f"❌ فشل النشر في إكس. رمز الحالة: {response.status_code}")
+            print(f"📋 رد السيرفر: {response.text}")
+            return False
     except Exception as e:
         print(f"حدث خطأ أثناء الاتصال بإكس: {e}")
         return False
@@ -67,7 +71,7 @@ def main():
     history_lines = load_twitter_history()
     published_urls = set(normalize_url(line.split(" || ")[0]) for line in history_lines if line)
     
-    # 1. مسار المقالات الجديدة فورا
+    # 1. مسار المقالات الجديدة
     latest_entry = feed.entries[0]
     normalized_latest_link = normalize_url(latest_entry.link)
     
@@ -76,17 +80,17 @@ def main():
         tweet_text = (
             f"🎯 مقال علمي جديد في منصة معامل الفيزياء!\n\n"
             f"📝 【 {clean_title} 】\n\n"
-            f"تفصّلوا بالمعاينة والتجربة الرقمية عبر الرابط المنصة:\n"
+            f"تفضلوا بالمعاينة والتجربة الرقمية عبر رابط المنصة:\n"
             f"{latest_entry.link}\n\n"
             f"#معامل_الفيزياء #محاكاة_علمية"
         )
         print(f"جاري تغريد مقال جديد: {clean_title}")
         if send_tweet(tweet_text):
             save_to_twitter_history(latest_entry.link, is_archive=False)
-            print("تم التغريد بنجاح.")
+            print("🎯 تم التغريد بنجاح وحفظ الرابط.")
         return
 
-    # 2. مسار الأرشيف (بشرط مقالين فقط يومياً)
+    # 2. مسار الأرشيف
     archive_sent_today = get_archive_count_today(history_lines)
     print(f"تغريدات الأرشيف المرسلة اليوم: {archive_sent_today}/2")
     
@@ -105,7 +109,7 @@ def main():
             print(f"جاري تغريد مقال من الأرشيف: {clean_title}")
             if send_tweet(tweet_text):
                 save_to_twitter_history(archive_entry.link, is_archive=True)
-                print("تم تغريد الأرشيف بنجاح.")
+                print("📚 تم تغريد الأرشيف بنجاح وحفظ الرابط.")
         else:
             print("كل المقالات بالخلاصة تم تغريدها مسبقاً.")
     else:
