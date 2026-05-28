@@ -6,7 +6,7 @@ import html
 import random
 from datetime import datetime
 
-# استدعاء مفاتيح بافر المجانية البديلة
+# استدعاء المفاتيح الأمنية من جيتهاب
 BUFFER_TOKEN = os.getenv("BUFFER_ACCESS_TOKEN")
 PROFILE_ID = os.getenv("BUFFER_PROFILE_ID")
 
@@ -43,19 +43,19 @@ def save_to_twitter_history(link, is_archive=False):
         f.write(f"{normalized} || {type_str} || {date_str}\n")
 
 def send_tweet_via_buffer(text):
-    """إرسال التغريدة عبر منصة Buffer المجانية للالتفاف على قيود إكس"""
-    url = "https://api.bufferapp.com/1/updates/create.json"
-    headers = {"Authorization": f"Bearer {BUFFER_TOKEN}"}
+    """إرسال التغريدة وتمرير التوكن بالتوافق مع الـ OIDC Tokens لـ Buffer"""
+    # نمرر التوكن مباشرة في رابط الطلب لتخطي حظر الـ OIDC في الـ Headers
+    url = f"https://api.bufferapp.com/1/updates/create.json?access_token={BUFFER_TOKEN}"
     
     payload = {
         "profile_ids[]": [PROFILE_ID],
         "text": text,
         "shorten": False,
-        "now": True # النشر فوراً دون انتظار جدولة بافر
+        "now": True  # النشر الفوري والمباشر
     }
     
     try:
-        response = requests.post(url, headers=headers, data=payload)
+        response = requests.post(url, data=payload)
         if response.status_code == 200:
             return True
         else:
@@ -96,7 +96,7 @@ def main():
         print(f"جاري إرسال مقال جديد لـ تويتر عبر Buffer: {clean_title}")
         if send_tweet_via_buffer(tweet_text):
             save_to_twitter_history(latest_entry.link, is_archive=False)
-            print("🎯 تم التغريد وحفظ الرابط للجديد بنجاح مجاني!")
+            print("🎯 تم التغريد وحفظ الرابط للجديد بنجاح!")
         return
 
     # 2. مسار الأرشيف
@@ -119,7 +119,7 @@ def main():
             print(f"جاري إرسال مقال أرشيفي لـ تويتر عبر Buffer: {clean_title}")
             if send_tweet_via_buffer(tweet_text):
                 save_to_twitter_history(archive_entry.link, is_archive=True)
-                print("📚 تم تغريد الأرشيف بنجاح مجاني!")
+                print("📚 تم تغريد الأرشيف بنجاح!")
         else:
             print("كل المقالات المتاحة تم تغريدها مسبقاً.")
     else:
