@@ -1,12 +1,12 @@
 import os
-import requests
 import feedparser
 import re
 import html
 import random
 from datetime import datetime
-from requests_oauthlib import OAuth1
+import tweepy
 
+# استدعاء المفاتيح الأمنية الأربعة
 API_KEY = os.getenv("TWITTER_API_KEY")
 API_SECRET = os.getenv("TWITTER_API_SECRET")
 ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
@@ -45,21 +45,21 @@ def save_to_twitter_history(link, is_archive=False):
         f.write(f"{normalized} || {type_str} || {date_str}\n")
 
 def send_tweet(text):
-    """إرسال التغريدة عبر الـ API v1.1 المستقر والمجاني"""
-    url = "https://api.twitter.com/1.1/statuses/update.json"
-    auth = OAuth1(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_SECRET)
-    payload = {"status": text}
-    
+    """إرسال التغريدة باستخدام مكتبة Tweepy الرسمية عبر واجهة API v2 للمسار المجاني"""
     try:
-        response = requests.post(url, auth=auth, data=payload)
-        if response.status_code == 200:
+        client = tweepy.Client(
+            consumer_key=API_KEY,
+            consumer_secret=API_SECRET,
+            access_token=ACCESS_TOKEN,
+            access_token_secret=ACCESS_SECRET
+        )
+        response = client.create_tweet(text=text)
+        if response.data and 'id' in response.data:
             return True
-        else:
-            print(f"❌ فشل النشر في إكس (v1.1). رمز الحالة: {response.status_code}")
-            print(f"📋 رد السيرفر: {response.text}")
-            return False
+        return False
     except Exception as e:
-        print(f"حدث خطأ أثناء الاتصال بإكس: {e}")
+        print(f"❌ حدث خطأ أثناء النشر عبر Tweepy:")
+        print(f"📋 تفاصيل الخطأ: {e}")
         return False
 
 def main():
@@ -71,7 +71,7 @@ def main():
     history_lines = load_twitter_history()
     published_urls = set(normalize_url(line.split(" || ")[0]) for line in history_lines if line)
     
-    # 1. مسار المقالات الجديدة فورا
+    # 1. مسار المقالات الجديدة فوراً
     latest_entry = feed.entries[0]
     normalized_latest_link = normalize_url(latest_entry.link)
     
