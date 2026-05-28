@@ -1,9 +1,9 @@
-name: Sync Website to Twitter (X)
+name: Sync Website to Twitter (X) via Browser Automation
 
 on:
   schedule:
-    - cron: '0 * * * *' # يفحص رأس كل ساعة تلقائياً
-  workflow_dispatch: # يتيح لك التشغيل اليدوي بضغطة زر
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   tweet-publish:
@@ -22,9 +22,10 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        pip install requests feedparser
+        pip install requests feedparser playwright
+        playwright install chromium
 
-    - name: Run Twitter Sync Script
+    - name: Run Browser Automation Sync
       env:
         X_USERNAME: ${{ secrets.X_USERNAME }}
         X_PASSWORD: ${{ secrets.X_PASSWORD }}
