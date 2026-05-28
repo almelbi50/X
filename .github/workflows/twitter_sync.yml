@@ -2,8 +2,8 @@ name: Sync Website to Twitter (X)
 
 on:
   schedule:
-    - cron: '0 * * * *' # يفحص رأس كل ساعة لالتقاط الجديد فوراً
-  workflow_dispatch: # يتيح لك التشغيل اليدوي بضغطة زر
+    - cron: '0 * * * *' # يفحص رأس كل ساعة تلقائياً لالتقاط المقالات الجديدة فوراً
+  workflow_dispatch: # يتيح لك التشغيل اليدوي بضغطة زر من تبويب Actions
 
 jobs:
   tweet-publish:
@@ -13,7 +13,7 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
       with:
-        persist-credentials: true
+        persist-credentials: true # يضمن الاحتفاظ بصلاحيات الكتابة لتحديث ملف الذاكرة
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -22,7 +22,7 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        pip install requests feedparser requests_oauthlib
+        pip install requests feedparser tweepy
 
     - name: Run Twitter Sync Script
       env:
@@ -37,8 +37,8 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         
-        # حفظ سجل التغريدات بشكل مستقل تماماً
+        # التحقق من وجود ملف ذاكرة التغريدات وحفظه داخل المستودع تلقائياً
         if [ -f published_tweets.txt ]; then
           git add published_tweets.txt
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Twitter history log [skip ci]" && git push origin HEAD:${{ github.ref_name }})
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Twitter history log via Tweepy [skip ci]" && git push origin HEAD:${{ github.ref_name }})
         fi
