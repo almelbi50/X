@@ -2,8 +2,8 @@ name: Sync Website to Twitter (X)
 
 on:
   schedule:
-    - cron: '0 * * * *' # يفحص رأس كل ساعة تلقائياً
-  workflow_dispatch: # يتيح لك التشغيل اليدوي بضغطة زر
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   tweet-publish:
@@ -22,9 +22,9 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        pip install requests feedparser requests_oauthlib
+        pip install requests feedparser tweepy
 
-    - name: Run Twitter Sync Script Direct
+    - name: Run Twitter Sync Script Tweepy
       env:
         TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
         TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
